@@ -1,4 +1,4 @@
-#ifndef SSE2NEON_H
+﻿#ifndef SSE2NEON_H
 #define SSE2NEON_H
 
 // This header file provides a simple API translation layer
@@ -78,6 +78,20 @@
 
 typedef float32x4_t __m128;
 typedef int32x4_t __m128i;
+typedef int32x2_t __m64;
+typedef union
+{
+	__m128i m128i;
+	__m64	m64[2];
+	uint64_t u64[2];
+	int64_t  s64[2];
+	uint32_t u32[4];
+	int32_t  s32[4];
+	uint16_t u16[8];
+	int16_t  s16[8];
+	uint8_t  u8[16];
+	int8_t   s8[16];
+} sse_m128;
 
 // ******************************************
 // Set/get methods
@@ -133,6 +147,7 @@ FORCE_INLINE __m128i _mm_set_epi32(int i3, int i2, int i1, int i0)
 	int32_t __attribute__((aligned(16))) data[4] = { i0, i1, i2, i3 };
 	return vld1q_s32(data);
 }
+
 
 // Stores four single-precision, floating-point values. https://msdn.microsoft.com/en-us/library/vstudio/s3h4ay6y(v=vs.100).aspx
 FORCE_INLINE void _mm_store_ps(float *p, __m128 a)
@@ -941,4 +956,203 @@ FORCE_INLINE void _mm_clflush(void const*p) {
 	// no corollary for Neon?
 }
 
+
+FORCE_INLINE void _mm_storeu_si128(__m128i *p, __m128i a ) 
+{
+	vst1q_s32((int32_t*)p, a);
+}
+
+
+FORCE_INLINE int _mm_testz_si128( __m128i a, __m128i b)   // This is much faster in 64 bit                           
+{
+    __m128i t;
+    t = _mm_and_si128  ( a, b );   
+    t = _mm_packs_epi32( t, _mm_setzero_si128() );
+	
+    return *((int64_t*)&t)== 0;
+}
+
+FORCE_INLINE int _mm_testc_si128( __m128i a, __m128i b)                              
+{
+    // a = _mm_xor_si128( a, b );
+	a = _mm_andnot_si128(a, _mm_set1_epi8(-1));
+
+    return _mm_testz_si128( a, b );
+}
+
+FORCE_INLINE int64_t _mm_extract_epi64(__m128i a, const int ndx)
+{
+	__m128i mask;
+	switch (ndx & 0x1)
+	{
+	case 1:  a = _mm_srli_si128(a, 8); break;
+	}
+
+	mask = _mm_set_epi32(0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF);
+	mask = _mm_and_si128(mask, a);
+
+	return *((int64_t*)&mask);
+}
+
+FORCE_INLINE __m128i _mm_insert_epi64(__m128i a, int64_t b, const int ndx)
+{
+	__m128i A;
+	A = a;
+
+	((int64_t*)&A)[ndx & 0x1] = b;
+	
+	return A;
+}
+
+FORCE_INLINE __m128i _mm_slli_epi64 (__m128i a, int count)
+{
+	return 	(__m128i)vshlq_n_s64((int64x2_t)a, count);
+}
+
+FORCE_INLINE __m128i _mm_slli_epi16 (__m128i a, int count)
+{
+	return 	(__m128i)vshlq_n_s16((int16x8_t)a, count);
+}
+
+
+FORCE_INLINE __m128i _mm_srli_epi64 (__m128i a, int count)
+{
+	return (__m128i)vshrq_n_u64((uint64x2_t)a, count);
+}
+
+FORCE_INLINE __m128i _mm_set1_epi8 (char b)
+{
+	return (__m128i)vdupq_n_s8(b);
+}
+
+FORCE_INLINE __m128i _mm_cmpgt_epi8 (__m128i a, __m128i b)
+{
+	return (__m128i)vcgtq_s8((int8x16_t)a, (int8x16_t)b);
+}
+
+
+FORCE_INLINE __m128i _mm_min_epu8 (__m128i a, __m128i b)
+{
+	return (__m128i)vminq_u8((uint8x16_t)a, (uint8x16_t)b);
+}
+
+FORCE_INLINE __m128i _mm_min_epu16(__m128i a, __m128i b)
+{
+	return (__m128i)vminq_u16((uint16x8_t)a, (uint16x8_t)b);
+}
+
+FORCE_INLINE __m128i _mm_set_epi8 (char b15, char b14,    char b13, char b12,   char b11, char b10,   char b9, char b8,   char b7, char b6,   char b5, char b4,   char b3, char b2,   char b1, char b0)
+{
+	int8_t __attribute__((aligned(16))) data[16] = { b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15 };
+	
+	return (__m128i)vld1q_s8(data);
+}
+
+
+FORCE_INLINE __m128i _mm_add_epi8 (__m128i a ,__m128i b)
+{
+	return (__m128i)vaddq_u8((uint8x16_t)a, (uint8x16_t)b);
+}
+
+FORCE_INLINE __m128i _mm_sub_epi8 (__m128i a, __m128i b)
+{
+	return (__m128i)vsubq_u8((uint8x16_t)a, (uint8x16_t)b);
+}
+
+
+FORCE_INLINE __m128i _mm_subs_epu8 (__m128i a, __m128i b)
+{
+	return (__m128i)vqsubq_u8((uint8x16_t)a, (uint8x16_t)b);
+}
+
+inline __m128i _mm_comge_epi8(__m128i a, __m128i b)
+{
+	__m128i c;
+	c = _mm_cmpgt_epi8(a, b);
+	a = _mm_cmpeq_epi8(a, b);
+	a = _mm_or_si128(a, c);
+	return a;
+}
+
+
+FORCE_INLINE __m128i _mm_shuffle_epi8(__m128i a, __m128i mask)
+{  
+    sse_m128 A,B, MASK, maskZero;
+	
+	A.m128i = a;
+	maskZero.m128i = _mm_comge_epi8(mask, _mm_setzero_si128());
+	MASK.m128i = _mm_and_si128(mask, _mm_set1_epi8((char)0x0F));
+
+	B.s8[0] = A.s8[(MASK.s8[0])];
+	B.s8[1] = A.s8[(MASK.s8[1])];
+	B.s8[2] = A.s8[(MASK.s8[2])];
+	B.s8[3] = A.s8[(MASK.s8[3])];
+	B.s8[4] = A.s8[(MASK.s8[4])];
+	B.s8[5] = A.s8[(MASK.s8[5])];
+	B.s8[6] = A.s8[(MASK.s8[6])];
+	B.s8[7] = A.s8[(MASK.s8[7])];
+	B.s8[8] = A.s8[(MASK.s8[8])];
+	B.s8[9] = A.s8[(MASK.s8[9])];
+	B.s8[10] = A.s8[(MASK.s8[10])];
+	B.s8[11] = A.s8[(MASK.s8[11])];
+	B.s8[12] = A.s8[(MASK.s8[12])];
+	B.s8[13] = A.s8[(MASK.s8[13])];
+	B.s8[14] = A.s8[(MASK.s8[14])];
+	B.s8[15] = A.s8[(MASK.s8[15])];
+
+	B.m128i = _mm_and_si128(B.m128i, maskZero.m128i);
+	return B.m128i;
+}
+
+FORCE_INLINE __m128i _mm_set1_epi16 (short w)
+{
+	return (__m128i)vld1q_dup_u16((uint16_t*)&w);
+}
+
+FORCE_INLINE __m128i _mm_set_epi16 (short w7, short w6,    short w5, short w4,   short w3, short w2,   short w1, short w0)
+{
+	int16_t __attribute__((aligned(8))) data[8] = { w0, w1, w2, w3, w4, w5, w6, w7 };
+	
+	return (__m128i)vld1q_s16((int16_t*)data);
+}
+
+FORCE_INLINE __m128i _mm_set_epi64x(int64_t i1, int64_t i2)
+{
+	int64_t __attribute__((aligned(16))) data[2] = { i2, i1 };
+	
+	return vld1q_s32((int32_t*)data);
+}
+
+FORCE_INLINE __m128i _mm_movpi64_epi64 (__m64 a)
+{
+	sse_m128 A;
+	A.u16[0] = 0;
+	A.m64[1] = a;
+	
+	return A.m128i;
+}
+
+FORCE_INLINE __m128i _mm_cvtepu8_epi16(__m128i a)
+{
+	__m128i b = _mm_setzero_si128();
+
+	return _mm_unpacklo_epi8(a, b);
+}
+
+FORCE_INLINE __m128i _mm_loadu_si128(const __m128i *p)
+{
+	// アライメント不要？
+	return vld1q_s32((const int32_t *)p);
+}
+
+FORCE_INLINE __m128i _mm_cmpeq_epi16 (__m128i a, __m128i b)
+{
+	return (__m128i)vceqq_s16((int16x8_t)a, (int16x8_t)b);
+}
+
+
+FORCE_INLINE __m128i _mm_cmpeq_epi8(__m128i a, __m128i b)
+{
+	return (__m128i)vceqq_u8((uint8x16_t)a, (uint8x16_t)b);
+}
 #endif
