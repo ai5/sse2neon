@@ -56,7 +56,9 @@ inline __m128i vU16(uint16_t v7, uint16_t v6, uint16_t v5, uint16_t v4,
 	return _mm_set_epi16(v7, v6, v5, v4, v3, v2, v1, v0);
 }
 
-
+#ifndef __ANDROID__
 inline bool operator==(const __m128i& a, const __m128i& b) { return memcmp(&a, &b, sizeof(__m128i)) == 0; }
+#endif
+inline bool equals(const __m128i& a, const __m128i& b) { return memcmp(&a, &b, sizeof(__m128i)) == 0; }
 
 #endif

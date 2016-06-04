@@ -962,6 +962,10 @@ FORCE_INLINE void _mm_storeu_si128(__m128i *p, __m128i a )
 	vst1q_s32((int32_t*)p, a);
 }
 
+FORCE_INLINE __m128i _mm_set1_epi8 (char b)
+{
+	return (__m128i)vdupq_n_s8(b);
+}
 
 FORCE_INLINE int _mm_testz_si128( __m128i a, __m128i b)   // This is much faster in 64 bit                           
 {
@@ -1020,11 +1024,6 @@ FORCE_INLINE __m128i _mm_srli_epi64 (__m128i a, int count)
 	return (__m128i)vshrq_n_u64((uint64x2_t)a, count);
 }
 
-FORCE_INLINE __m128i _mm_set1_epi8 (char b)
-{
-	return (__m128i)vdupq_n_s8(b);
-}
-
 FORCE_INLINE __m128i _mm_cmpgt_epi8 (__m128i a, __m128i b)
 {
 	return (__m128i)vcgtq_s8((int8x16_t)a, (int8x16_t)b);
@@ -1063,6 +1062,11 @@ FORCE_INLINE __m128i _mm_sub_epi8 (__m128i a, __m128i b)
 FORCE_INLINE __m128i _mm_subs_epu8 (__m128i a, __m128i b)
 {
 	return (__m128i)vqsubq_u8((uint8x16_t)a, (uint8x16_t)b);
+}
+
+FORCE_INLINE __m128i _mm_cmpeq_epi8(__m128i a, __m128i b)
+{
+	return (__m128i)vceqq_u8((uint8x16_t)a, (uint8x16_t)b);
 }
 
 inline __m128i _mm_comge_epi8(__m128i a, __m128i b)
@@ -1126,8 +1130,8 @@ FORCE_INLINE __m128i _mm_set_epi64x(int64_t i1, int64_t i2)
 FORCE_INLINE __m128i _mm_movpi64_epi64 (__m64 a)
 {
 	sse_m128 A;
-	A.u16[0] = 0;
-	A.m64[1] = a;
+	A.m64[0] = a;
+	A.u64[1] = 0;
 	
 	return A.m128i;
 }
@@ -1151,8 +1155,6 @@ FORCE_INLINE __m128i _mm_cmpeq_epi16 (__m128i a, __m128i b)
 }
 
 
-FORCE_INLINE __m128i _mm_cmpeq_epi8(__m128i a, __m128i b)
-{
-	return (__m128i)vceqq_u8((uint8x16_t)a, (uint8x16_t)b);
-}
+#define _mm_empty()
+
 #endif
